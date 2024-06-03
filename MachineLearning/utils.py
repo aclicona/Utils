@@ -50,8 +50,7 @@ class EnvironmentDirOptions:
 
             path = os.path.join(self.root_path, location)
             drive.mount(path)
-            return path
-        return os.path.join(self.root_path, location, "My Drive")
+            return os.path.join(self
 
     @staticmethod
     def is_running_in_colab():
