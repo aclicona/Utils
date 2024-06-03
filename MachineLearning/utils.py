@@ -44,11 +44,11 @@ class EnvironmentDirOptions:
                 self.root_path = "."
         self.main_dir = None
 
-    def load_google_drive_dir(self, location: str = "drive/ My Drive"):
+    def load_google_drive_dir(self, location: str = "drive"):
         if self.is_running_in_colab():
             from google.colab import drive
 
-            path = os.path.join(self.root_path, location)
+            path = os.path.join(self.root_path, location, "My Drive")
             drive.mount(path)
             return path
         return self.root_path
