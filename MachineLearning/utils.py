@@ -44,7 +44,7 @@ class EnvironmentDirOptions:
                 self.root_path = "."
         self.main_dir = None
 
-    def load_google_drive_dir(self, location: str = "drive"):
+    def load_google_drive_dir(self, location: str = "drive/ My Drive"):
         if self.is_running_in_colab():
             from google.colab import drive
 
@@ -93,9 +93,9 @@ class EnvironmentDirOptions:
         save_root_path = self.load_google_drive_dir()
         try:
             os.makedirs(f"{save_root_path}/{name}", exist_ok=True)
-        except OSError as e:
-            if e.errno != errno.EEXIST:
-                raise
+        except OSError:
+            if not os.path.exists(f"{save_root_path}/{name}"):
+                os.mkdir(f"{save_root_path}/{name}")
         return f"{save_root_path}/{name}"
 
     def get_repo_from_git(
