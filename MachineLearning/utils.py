@@ -50,7 +50,7 @@ class EnvironmentDirOptions:
 
             path = os.path.join(self.root_path, location)
             drive.mount(path)
-            return os.path.join(self.root_path, location)
+            return os.path.join(self.root_path, location, "My Drive")
         return self.root_path
 
     @staticmethod
