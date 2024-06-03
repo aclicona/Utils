@@ -3,6 +3,8 @@ import os
 import sys
 import subprocess
 import pandas as pd
+import joblib
+import pickle
 
 
 def download_and_extract(
@@ -32,18 +34,14 @@ def download_and_extract(
 
 class EnvironmentDirOptions:
 
-    def __init__(self, drive_dir: str = None, kaggle_dir: str = None) -> None:
-        if drive_dir is None:
-            self.root_path = "/content"
-        else:
-            self.root_path = drive_dir
-        if kaggle_dir is None:
-            self.root_path = "/kaggle/working"
-        else:
-            self.root_path = kaggle_dir
-        if kaggle_dir is None and drive_dir is None:
-            self.root_path = "."
-
+    def __init__(self, dir_path: str = None):
+        if dir_path is None:
+            if self.is_running_in_colab():
+                self.root_path = "/content"
+            elif self.is_running_in_kaggle():
+                self.root_path = "/kaggle/working"
+            else:
+                self.root_path = "."
         self.main_dir = None
 
     def load_google_drive_dir(self, location: str = "drive"):
@@ -125,38 +123,87 @@ class EnvironmentDirOptions:
             # Add the path to sys.path
             if path_to_add not in sys.path:
                 sys.path.append(path_to_add)
+            self.main_dir = path_to_add
+        else:
+            self.main_dir = self.root_path
 
 
-def data_selection_for_evaluation(
-    model_,
-    dataset,
-    time_stamp,
-    num_look_back_steps,
-    num_forecast_steps,
-    columns_for_training,
-    scaler_x,
-    scaler_y,
-    date_index,
-    target_column,
-):
-    initial_timestamp_ = pd.to_datetime(time_stamp)
-    initial_position = dataset[dataset[date_index] == initial_timestamp_].index[0]
-    sub_set = dataset[
-        initial_position : (initial_position + num_look_back_steps + num_forecast_steps)
-    ]
-    x_test_ = scaler_x.transform(sub_set[:num_look_back_steps][columns_for_training])
-    x_test_ = x_test_.reshape(-1, x_test_.shape[0], x_test_.shape[1])
-    y_pred_ = model_.predict(x_test_)
-    try:
-        y_pred_ = scaler_y.inverse_transform(y_pred_).flatten()
-    except ValueError:
-        y_pred_ = scaler_y.inverse_transform(
-            y_pred_.reshape(-1, y_pred_.shape[0])
-        ).flatten()
-    y_true_ = dataset[
-        initial_position
-        + num_look_back_steps : initial_position
-        + num_look_back_steps
-        + num_forecast_steps
-    ][target_column].to_numpy()
-    return y_true_, y_pred_, sub_set[[date_index, target_column]]
+class DataSelectionForEvaluator:
+    def __init__(self, dataset):
+        self.dataset = dataset
+
+    def data_selection(
+        self,
+        model_,
+        time_stamp,
+        num_look_back_steps,
+        num_forecast_steps,
+        columns_for_training,
+        scaler_x,
+        scaler_y,
+        date_index,
+        target_column,
+    ):
+        initial_timestamp_ = pd.to_datetime(time_stamp)
+        initial_position = self.dataset[self.dataset[date_index] == initial_timestamp_].index[0]
+        sub_set = self.dataset[
+            initial_position : (initial_position + num_look_back_steps + num_forecast_steps)
+        ]
+        x_test_ = scaler_x.transform(sub_set[:num_look_back_steps][columns_for_training])
+        x_test_ = x_test_.reshape(-1, x_test_.shape[0], x_test_.shape[1])
+        y_pred_ = model_.predict(x_test_)
+        try:
+            y_pred_ = scaler_y.inverse_transform(y_pred_).flatten()
+        except ValueError:
+            y_pred_ = scaler_y.inverse_transform(
+                y_pred_.reshape(-1, y_pred_.shape[0])
+            ).flatten()
+        y_true_ = self.dataset[
+            initial_position
+            + num_look_back_steps : initial_position
+            + num_look_back_steps
+            + num_forecast_steps
+        ][target_column].to_numpy()
+        return y_true_, y_pred_, sub_set[[date_index, target_column]]
+
+
+def save_scaler(scaler, filename, method="joblib"):
+    """
+    Save a scikit-learn scaler to a file using joblib or pickle.
+
+    Parameters:
+    scaler (object): The scikit-learn scaler to save.
+    filename (str): The filename to save the scaler to.
+    method (str): The method to use for saving ('joblib' or 'pickle').
+    """
+    if method == "joblib":
+        joblib.dump(scaler, filename)
+    elif method == "pickle":
+        with open(filename, "wb") as f:
+            pickle.dump(scaler, f)
+    else:
+        raise ValueError("Method should be 'joblib' or 'pickle'")
+
+
+def load_scaler(filename, method="joblib"):
+    """
+    Load a scikit-learn scaler from a file using joblib or pickle.
+
+    Parameters:
+    filename (str): The filename to load the scaler from.
+    method (str): The method to use for loading ('joblib' or 'pickle').
+
+    Returns:
+    object: The loaded scikit-learn scaler.
+    """
+    if method == "joblib":
+        scaler = joblib.load(filename)
+        print(f"Scaler loaded using joblib from {filename}")
+    elif method == "pickle":
+        with open(filename, "rb") as f:
+            scaler = pickle.load(f)
+        print(f"Scaler loaded using pickle from {filename}")
+    else:
+        raise ValueError("Method should be 'joblib' or 'pickle'")
+
+    return scaler
