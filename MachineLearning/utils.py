@@ -48,10 +48,10 @@ class EnvironmentDirOptions:
         if self.is_running_in_colab():
             from google.colab import drive
 
-            path = os.path.join(self.root_path, location, "My Drive")
+            path = os.path.join(self.root_path, location)
             drive.mount(path)
             return path
-        return self.root_path
+        return os.path.join(self.root_path, location, "My Drive")
 
     @staticmethod
     def is_running_in_colab():
