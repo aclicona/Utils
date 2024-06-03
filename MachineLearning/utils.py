@@ -95,7 +95,7 @@ class EnvironmentDirOptions:
             os.makedirs(f"{save_root_path}/{name}", exist_ok=True)
         except OSError:
             if not os.path.exists(f"{save_root_path}/{name}"):
-                os.mkdir(f"{save_root_path}/{name}")
+                os.makedirs(f"{save_root_path}/{name}")
         return f"{save_root_path}/{name}"
 
     def get_repo_from_git(
